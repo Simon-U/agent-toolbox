@@ -1,0 +1,7 @@
+ui
+**/__pycache__/
+agents/base/database/sqlite.db
+.python-version
+.pytest_cache
+agent_toolbox.egg-info
+build
