@@ -8,51 +8,86 @@ __all__ = ["DatabaseConnector"]
 
 class DatabaseConnector:
     SUPPORTED_DB_TYPES = ["sqlite", "postgres"]
-
     def __init__(
         self,
-        db_type=environ.get("DB"),
+        db_type=None,
         uri="/home/simon/Documents/Pure_Inference/Malvius/database/sqlite.db",
+        settings=None,
     ):
         """
         Initialize DatabaseConnector.
-
         Args:
-            db_type (str): Type of database (default from env)
+            db_type (str): Type of database (default from env or settings)
             uri (str): Database URI
-
+            settings (object, optional): Settings object with configuration attributes.
+                                         If None, environment variables are used.
         Raises:
             ConfigurationError: If database configuration is invalid
         """
         try:
-            self.db_type = db_type
+            # Use environ if settings is None
+            env = settings if settings is not None else environ
+            
+            # Get db_type from parameter, or from settings/environ if not specified
+            if db_type is not None:
+                self.db_type = db_type
+            else:
+                if hasattr(env, 'get'):  # If env has get method (like environ)
+                    self.db_type = env.get("DB")
+                else:  # If env is a settings object with attributes
+                    self.db_type = getattr(env, "DB", None)
             self.uri = uri
-
-            if db_type == "postgres":
-                required_env_vars = [
+            
+            if self.db_type == "postgres":
+                required_vars = [
                     "DB_USER",
                     "DB_PASS",
                     "DB_PORT",
                     "DB_HOST",
                     "DB_NAME",
                 ]
-                missing_vars = [
-                    var for var in required_env_vars if not environ.get(var)
-                ]
-
-
-                self.uri = (
-                    "postgresql://{username}:{password}@{host}:{port}/{dbname}".format(
-                        username=environ.get("DB_USER"),
-                        password=environ.get("DB_PASS"),
-                        port=environ.get("DB_PORT"),
-                        host=environ.get("DB_HOST"),
-                        dbname=environ.get("DB_NAME"),
+                
+                # Check for missing variables
+                missing_vars = []
+                for var in required_vars:
+                    if hasattr(env, 'get'):  # If env has get method (like environ)
+                        if not env.get(var):
+                            missing_vars.append(var)
+                    else:  # If env is a settings object with attributes
+                        if not hasattr(env, var) or getattr(env, var) is None:
+                            missing_vars.append(var)
+                
+                # Format the PostgreSQL URI
+                if hasattr(env, 'get'):  # If env has get method (like environ)
+                    self.uri = (
+                        "postgresql://{username}:{password}@{host}:{port}/{dbname}".format(
+                            username=env.get("DB_USER"),
+                            password=env.get("DB_PASS"),
+                            port=env.get("DB_PORT"),
+                            host=env.get("DB_HOST"),
+                            dbname=env.get("DB_NAME"),
+                        )
                     )
-                )
-
+                else:  # If env is a settings object with attributes
+                    self.uri = (
+                        "postgresql://{username}:{password}@{host}:{port}/{dbname}".format(
+                            username=env.DB_USER,
+                            password=env.DB_PASS,
+                            port=env.DB_PORT,
+                            host=env.DB_HOST,
+                            dbname=env.DB_NAME,
+                        )
+                    )
+                
+                # Handle missing variables if needed
+                if missing_vars:
+                    # You might want to raise an exception here or handle it another way
+                    pass
+                    
         except Exception as e:
             error_msg = f"Failed to initialize database connector: {str(e)}"
+            # You might want to raise a ConfigurationError here
+            raise Exception(error_msg)  # Replace with your custom exception
 
     def connect(self):
         """
