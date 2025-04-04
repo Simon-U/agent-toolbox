@@ -6,6 +6,7 @@ from os import environ
 __all__ = ["DatabaseConnector"]
 
 
+
 class DatabaseConnector:
     SUPPORTED_DB_TYPES = ["sqlite", "postgres"]
     def __init__(
@@ -57,12 +58,15 @@ class DatabaseConnector:
                         if not hasattr(env, var) or getattr(env, var) is None:
                             missing_vars.append(var)
                 
-                # Format the PostgreSQL URI
+                # Import urllib for URL encoding
+                from urllib.parse import quote_plus
+                
+                # Format the PostgreSQL URI with URL-encoded username and password
                 if hasattr(env, 'get'):  # If env has get method (like environ)
                     self.uri = (
                         "postgresql://{username}:{password}@{host}:{port}/{dbname}".format(
-                            username=env.get("DB_USER"),
-                            password=env.get("DB_PASS"),
+                            username=quote_plus(env.get("DB_USER")),
+                            password=quote_plus(env.get("DB_PASS")),
                             port=env.get("DB_PORT"),
                             host=env.get("DB_HOST"),
                             dbname=env.get("DB_NAME"),
@@ -71,8 +75,8 @@ class DatabaseConnector:
                 else:  # If env is a settings object with attributes
                     self.uri = (
                         "postgresql://{username}:{password}@{host}:{port}/{dbname}".format(
-                            username=env.DB_USER,
-                            password=env.DB_PASS,
+                            username=quote_plus(env.DB_USER),
+                            password=quote_plus(env.DB_PASS),
                             port=env.DB_PORT,
                             host=env.DB_HOST,
                             dbname=env.DB_NAME,
