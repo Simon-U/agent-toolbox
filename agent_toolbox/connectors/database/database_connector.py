@@ -2,7 +2,7 @@ import sqlite3
 from sqlalchemy import text
 from sqlalchemy import create_engine
 from os import environ
-
+from urllib.parse import quote_plus
 __all__ = ["DatabaseConnector"]
 
 
@@ -58,8 +58,7 @@ class DatabaseConnector:
                         if not hasattr(env, var) or getattr(env, var) is None:
                             missing_vars.append(var)
                 
-                # Import urllib for URL encoding
-                from urllib.parse import quote_plus
+
                 
                 # Format the PostgreSQL URI with URL-encoded username and password
                 if hasattr(env, 'get'):  # If env has get method (like environ)
