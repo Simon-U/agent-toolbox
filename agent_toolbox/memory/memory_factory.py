@@ -19,10 +19,10 @@ def Memory(
     postgres_type="sync_single",
     postgres_connection=None,
     max_pool=8,
-    checkpoint_table: str = "assistant.checkpoints",
-    intermediate_table: str = "assistant.writes",
-    migration_table: str = "assistant.checkpoint_migrations",
-    blob_table: str = "assistant.blobs",
+    checkpoint_table: str = "checkpoints",
+    intermediate_table: str = "writes",
+    migration_table: str = "checkpoint_migrations",
+    blob_table: str = "blobs",
 ):
     """
     Memory checkpoint for graph applications. This class saves the previous input history

@@ -34,7 +34,7 @@ MIGRATIONS = [
     checkpoint JSONB NOT NULL,
     metadata JSONB NOT NULL DEFAULT '{{}}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    user_id INTEGER,
+    user_id TEXT,
     PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
 );""",
     """CREATE TABLE IF NOT EXISTS {blobs_table} (
@@ -56,7 +56,7 @@ MIGRATIONS = [
     type TEXT,
     blob BYTEA NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    user_id INTEGER,
+    user_id TEXT,
     PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
 );""",
     "ALTER TABLE {blobs_table} ALTER COLUMN blob DROP not null;",

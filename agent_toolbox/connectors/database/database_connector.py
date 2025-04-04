@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy import create_engine
 from os import environ
 from urllib.parse import quote_plus
+
 __all__ = ["DatabaseConnector"]
 
 
