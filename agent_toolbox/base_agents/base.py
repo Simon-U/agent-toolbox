@@ -193,12 +193,12 @@ class BaseAgent:
         return llm
 
     @staticmethod
-    def string_model(prompt, api_key: Any = None, temperature=0, model=None, provider='anthropic'):
+    def string_model(prompt, api_key: Any = None, temperature=0, model=None, provider='anthropic', streaming=False):
         # Check if we support the selected model
 
         BaseAgent._check_model(model)
         prompt = BaseAgent._check_prompt(prompt)
-        llm = BaseAgent._get_model(model, temperature, api_key, provider=provider)
+        llm = BaseAgent._get_model(model, temperature, api_key, provider=provider, streaming=streaming)
         return prompt | llm | StrOutputParser()
 
     @staticmethod
