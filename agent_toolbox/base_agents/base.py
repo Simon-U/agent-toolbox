@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from typing import Any
 from langchain_core.output_parsers import PydanticOutputParser
-
+from langchain_experimental.graph_transformers import LLMGraphTransformer
 
 from ..connectors.ollama.ollama import Ollama
 from ..connectors.ollama.proxy_ollama import ProxyOllama
@@ -191,6 +191,31 @@ class BaseAgent:
         if add_parser:
             llm = llm | PydanticToolsParser(tools=unique_tools)
         return llm
+    
+    def graph_transformer_model(
+        self,
+        prompt: str,
+        model: str,
+        temperature=0,
+        api_key: Any = None,
+        streaming=False,
+        provider='anthropic',
+        **kwargs
+    ):
+        node_properties = kwargs.get('node_properties', ["description"])
+        relationship_properties = kwargs.get('node_properties', ["description"])
+        BaseAgent._check_model(model)
+        prompt = BaseAgent._check_prompt(prompt)
+        
+        llm = BaseAgent._get_model(model, temperature, api_key, streaming, provider=provider)
+        
+        graph_model = LLMGraphTransformer(
+            llm=llm,
+            prompt=prompt,
+            node_properties=node_properties,
+            relationship_properties=relationship_properties,
+        )
+        return graph_model
 
     @staticmethod
     def string_model(prompt, api_key: Any = None, temperature=0, model=None, provider='anthropic'):

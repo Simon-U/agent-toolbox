@@ -27,6 +27,7 @@ dependencies = [
     "langgraph-checkpoint-postgres (>=2.0.15,<3.0.0)",
     "requests[socks] (>=2.32.3,<3.0.0)",
     "langchain-ollama (>=0.3.0,<0.4.0)",
+    "langchain-experimental (>=0.3.4,<0.4.0)",
 ]
 
 
