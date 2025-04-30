@@ -36,7 +36,7 @@ class BaseAgent:
         pass
 
     @staticmethod
-    def _get_model(model, temperature, api_key, streaming=False, provider='anthropic'):
+    def _get_model(model, temperature, api_key, streaming=False, provider='anthropic', max_tokens=8000):
         if provider == 'openai':
             if not api_key:
                 api_key = os.environ.get("OPENAI_API_KEY")
@@ -45,12 +45,13 @@ class BaseAgent:
                 temperature=temperature,
                 streaming=streaming,
                 api_key=api_key,
+                max_tokens=max_tokens
             )
         elif provider == 'anthropic':
             if not api_key:
                 api_key = os.environ.get("ANTHROPIC_API_KEY")
             return ChatAnthropic(
-                model=model, temperature=temperature, streaming=streaming, api_key=api_key
+                model=model, temperature=temperature, streaming=streaming, api_key=api_key, max_tokens=max_tokens
             )
         elif provider == 'ollama':
             base_url = os.getenv("LOCAL_LLM_URL", "http://103.133.98.204:11434")
@@ -94,6 +95,7 @@ class BaseAgent:
         temperature: int = 0,
         streaming: bool = False,
         provider='anthropic',
+        max_tokens=8000
     ) -> Runnable:
         """A model return structured output based on the return_class
 
@@ -112,7 +114,7 @@ class BaseAgent:
 
         BaseAgent._check_model(model)
         prompt = BaseAgent._check_prompt(prompt)
-        llm = BaseAgent._get_model(model, temperature, api_key, provider=provider)
+        llm = BaseAgent._get_model(model, temperature, api_key, provider=provider, max_tokens=max_tokens)
         
         
 
@@ -129,7 +131,8 @@ class BaseAgent:
         api_key: Any = None,
         temperature: int = 0,
         streaming: bool = False,
-        provider='anthropic'
+        provider='anthropic',
+        max_tokens=8000
     ) -> Runnable:
         """Basic standard llm model with no additions
 
@@ -147,7 +150,7 @@ class BaseAgent:
 
         BaseAgent._check_model(model)
         prompt = BaseAgent._check_prompt(prompt)
-        llm = BaseAgent._get_model(model, temperature, api_key, streaming=streaming, provider=provider)
+        llm = BaseAgent._get_model(model, temperature, api_key, streaming=streaming, provider=provider, max_tokens=max_tokens)
         return prompt | llm
 
     @staticmethod
@@ -160,7 +163,8 @@ class BaseAgent:
         streaming=False,
         add_parser=False,
         tool_choice=None,
-        provider='anthropic'
+        provider='anthropic',
+        max_tokens=8000
     ) -> Runnable:
         """Creating a model that is able to use tools. These tools can be executed by the model
 
@@ -177,7 +181,7 @@ class BaseAgent:
         """
         BaseAgent._check_model(model)
         prompt = BaseAgent._check_prompt(prompt)
-        llm = BaseAgent._get_model(model, temperature, api_key, streaming, provider=provider)
+        llm = BaseAgent._get_model(model, temperature, api_key, streaming, provider=provider, max_tokens=max_tokens)
 
         unique_tools = []
         if not model.startswith("gpt"):
@@ -194,38 +198,14 @@ class BaseAgent:
             llm = llm | PydanticToolsParser(tools=unique_tools)
         return llm
     
-    def graph_transformer_model(
-        self,
-        prompt: str,
-        model: str,
-        temperature=0,
-        api_key: Any = None,
-        streaming=False,
-        provider='anthropic',
-        **kwargs
-    ):
-        node_properties = kwargs.get('node_properties', ["description"])
-        relationship_properties = kwargs.get('node_properties', ["description"])
-        BaseAgent._check_model(model)
-        prompt = BaseAgent._check_prompt(prompt)
-        
-        llm = BaseAgent._get_model(model, temperature, api_key, streaming, provider=provider)
-        
-        graph_model = LLMGraphTransformer(
-            llm=llm,
-            prompt=prompt,
-            node_properties=node_properties,
-            relationship_properties=relationship_properties,
-        )
-        return graph_model
 
     @staticmethod
-    def string_model(prompt, api_key: Any = None, temperature=0, model=None, provider='anthropic', streaming=False):
+    def string_model(prompt, api_key: Any = None, temperature=0, model=None, provider='anthropic', streaming=False, max_tokens=8000):
         # Check if we support the selected model
 
         BaseAgent._check_model(model)
         prompt = BaseAgent._check_prompt(prompt)
-        llm = BaseAgent._get_model(model, temperature, api_key, provider=provider, streaming=streaming)
+        llm = BaseAgent._get_model(model, temperature, api_key, provider=provider, streaming=streaming, max_tokens=max_tokens)
         return prompt | llm | StrOutputParser()
 
     @staticmethod
