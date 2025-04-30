@@ -94,7 +94,6 @@ class BaseAgent:
         temperature: int = 0,
         streaming: bool = False,
         provider='anthropic',
-        add_retry=False
     ) -> Runnable:
         """A model return structured output based on the return_class
 
@@ -120,12 +119,6 @@ class BaseAgent:
         llm = prompt | llm.with_structured_output(
             schema=return_class, include_raw=include_raw
         )
-        if add_retry:
-            parser = PydanticOutputParser(pydantic_object=return_class)
-            retry_parser = RetryOutputParser.from_llm(parser=parser, llm=llm)
-            return RunnableParallel(
-                completion=llm, prompt_value=prompt
-            ) | RunnableLambda(lambda x: retry_parser.parse_with_prompt(**x))
 
         return llm
 
