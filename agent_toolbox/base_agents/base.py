@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 from typing import Any
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_experimental.graph_transformers import LLMGraphTransformer
+from langchain.output_parsers import RetryOutputParser
+from langchain_core.runnables import RunnableLambda, RunnableParallel
 
 from ..connectors.ollama.ollama import Ollama
 from ..connectors.ollama.proxy_ollama import ProxyOllama
@@ -91,8 +93,8 @@ class BaseAgent:
         include_raw: bool = True,
         temperature: int = 0,
         streaming: bool = False,
-        add_parser=False,
-        provider='anthropic'
+        provider='anthropic',
+        add_retry=False
     ) -> Runnable:
         """A model return structured output based on the return_class
 
@@ -112,12 +114,19 @@ class BaseAgent:
         BaseAgent._check_model(model)
         prompt = BaseAgent._check_prompt(prompt)
         llm = BaseAgent._get_model(model, temperature, api_key, provider=provider)
+        
+        
+
         llm = prompt | llm.with_structured_output(
             schema=return_class, include_raw=include_raw
         )
-        if add_parser and issubclass(return_class, BaseModel):
+        if add_retry:
             parser = PydanticOutputParser(pydantic_object=return_class)
-            llm = llm | parser
+            retry_parser = RetryOutputParser.from_llm(parser=parser, llm=llm)
+            return RunnableParallel(
+                completion=llm, prompt_value=prompt
+            ) | RunnableLambda(lambda x: retry_parser.parse_with_prompt(**x))
+
         return llm
 
     @staticmethod
