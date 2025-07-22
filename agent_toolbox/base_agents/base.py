@@ -14,8 +14,6 @@ from dotenv import load_dotenv
 from typing import Any
 
 from langchain_ollama import ChatOllama
-
-from ..connectors.ollama.ollama import Ollama
 from ..connectors.ollama.proxy_ollama import ProxyOllama
 
 load_dotenv(override=True)

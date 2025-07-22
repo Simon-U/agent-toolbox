@@ -12,7 +12,7 @@ from typing import (
 from pydantic import Field
 from aiohttp_socks import ProxyConnector
 
-from langchain_community.chat_models.ollama import ChatOllama
+from langchain_ollama import ChatOllama
 from langchain_community.llms.ollama import OllamaEndpointNotFoundError
 from .ollama import Ollama
 
