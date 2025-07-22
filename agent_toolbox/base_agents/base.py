@@ -12,10 +12,8 @@ from langchain_core.runnables import Runnable
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from typing import Any
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_experimental.graph_transformers import LLMGraphTransformer
-from langchain.output_parsers import RetryOutputParser
-from langchain_core.runnables import RunnableLambda, RunnableParallel
+
+from langchain_ollama import ChatOllama
 
 from ..connectors.ollama.ollama import Ollama
 from ..connectors.ollama.proxy_ollama import ProxyOllama
@@ -65,14 +63,15 @@ class BaseAgent:
                     format="json",
                     disable_streaming=True,
                 )
-            return Ollama(
+            return ChatOllama(
                 model=model,
                 temperature=temperature,
                 num_ctx=10000,
                 base_url=base_url,
                 streaming=streaming,
                 format="json",
-                disable_streaming=True)
+                #disable_streaming=True
+                )
         raise ValueError(f'Your provider {provider} is not supported')
 
     @staticmethod
