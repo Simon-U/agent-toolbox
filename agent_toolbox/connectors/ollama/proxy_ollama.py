@@ -13,13 +13,11 @@ from pydantic import Field
 from aiohttp_socks import ProxyConnector
 
 from langchain_ollama import ChatOllama
-from langchain_community.llms.ollama import OllamaEndpointNotFoundError
-from .ollama import Ollama
 
 __all__ = ["ProxyOllama"]
 
 
-class ProxyOllama(Ollama, ChatOllama):
+class ProxyOllama(ChatOllama):
     """Function chat model that uses Ollama API."""
 
     proxies: dict = Field(
@@ -123,7 +121,7 @@ class ProxyOllama(Ollama, ChatOllama):
             ) as response:
                 if response.status != 200:
                     if response.status == 404:
-                        raise OllamaEndpointNotFoundError(
+                        raise ValueError(
                             "Ollama call failed with status code 404."
                         )
                     else:
@@ -170,7 +168,7 @@ class ProxyOllama(Ollama, ChatOllama):
                 "images": payload.get("images", []),
                 **params,
             }
-        print(f"Url {api_url} and {self.proxies}")
+
         response = requests.post(
             url=api_url,
             headers={
@@ -186,7 +184,7 @@ class ProxyOllama(Ollama, ChatOllama):
         response.encoding = "utf-8"
         if response.status_code != 200:
             if response.status_code == 404:
-                raise OllamaEndpointNotFoundError(
+                raise ValueError(
                     "Ollama call failed with status code 404. "
                     "Maybe your model is not found "
                     f"and you should pull the model with `ollama pull {self.model}`."
