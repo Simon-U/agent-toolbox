@@ -10,11 +10,11 @@ from langchain_anthropic.chat_models import convert_to_anthropic_tool
 from langchain_core.tools import tool as create_tool
 from langchain_core.output_parsers import PydanticToolsParser
 from langchain_core.runnables import Runnable
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from dotenv import load_dotenv
 from typing import Any
 from langchain_core.tools import BaseTool
-
+from typing import List, Optional
 
 from langchain_ollama import ChatOllama
 from ..connectors.ollama.proxy_ollama import ProxyOllama
@@ -208,131 +208,43 @@ class BaseAgent:
         llm = BaseAgent._get_model(model, temperature, api_key, provider=provider, streaming=streaming, max_tokens=max_tokens)
         return prompt | llm | StrOutputParser()
 
-    @staticmethod
-    def _get_output(response):
-        if response["raw"].additional_kwargs != {}:
-            json_string = response["raw"].additional_kwargs["tool_calls"][0][
-                "function"
-            ]["arguments"]
-        else:
-            json_string = response["raw"].tool_calls[0]["args"]["properties"]
-        return json_string
-
-    @staticmethod
-    def _has_list_attribute(pydantic_class):
-        # Retrieve the annotations of the class and check if any attribute is a list
-        for attr_name, attr_type in pydantic_class.__annotations__.items():
-            if (
-                inspect.isclass(attr_type)
-                and getattr(attr_type, "__origin__", None) is list
-            ):
-                return True
-        return False
-
-    def _process_list(self, json_string):
-        if not json_string.endswith('"}'):
-            json_string += '"}'
-
-            list_pattern = re.compile(r"(.*?)\s*\[", re.DOTALL)
-
-            # Find the annotations part
-            match = list_pattern.search(json_string)
+    @staticmethod 
+    def parse_llm_response_generic(
+        response_text: str, 
+        possible_classes: List[BaseModel]
+    ) -> Optional[BaseModel]:
+        """
+        Generic parser that tries to match any of the provided Pydantic classes
+        Expects XML tags with JSON content format
+        """
+        # Remove answer_block wrapper if present
+        content = re.sub(r'</?answer_block[^>]*>', '', response_text, flags=re.IGNORECASE).strip()
+        
+        # Try each possible class
+        for model_class in possible_classes:
+            class_name = model_class.__name__
+            
+            # Create pattern to match the class tag with JSON content
+            pattern = rf'<{class_name}>\s*({{.*?}})\s*</{class_name}>'
+            match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
+            
             if match:
-                list_text = match.group(0)
-
-            json_string = re.sub(list_pattern, "", json_string)
-
-            # Get all dictionaries from the list
-            pattern = re.compile(r"\{.*?\}", re.DOTALL)
-            matches = pattern.findall(json_string)
-            key_value_pairs_list = []
-            num_keys = 0
-            for match in matches:
-                match_dict, num_keys = self._extract_key_value_pairs(match, num_keys)
-                if match_dict:
-                    key_value_pairs_list.append(match_dict)
-
-            dicts_str = ", ".join(key_value_pairs_list)
-            json_string = list_text + f"{dicts_str}" + "]}"
-        return json_string
-
-    def _process_json_string(self, json_string, return_class):
-        """
-        Handles the JSON processing logic depending on the return class and skip flag.
-        """
-        # ToDO Here we likely have to check what is a list and what not There might be class with list, and one none list
-        if isinstance(json_string, dict):
-            return json_string
-
-        elif self._has_list_attribute(return_class):
-            final_json_str = self._process_list(json_string)
-            return json.loads(final_json_str)
-
-        else:
-            final_json_str, num_keys = self._extract_key_value_pairs(json_string)
-            return json.loads(final_json_str)
-
-    def format_raw_response(self, response, return_class=None):
-        """
-        This function tries to format the response if it fails by the model.
-
-        response: The response from the mpdel
-        state: The state of the graph. Only needed for causal explanation
-        skip:
-
-        """
-        step = self.current_agent()
-        json_string = self._get_output(response)
-        try:
-            json_obj = self._process_json_string(json_string, return_class)
-
-            if return_class:
-                return return_class(**json_obj)
-            return json_obj
-
-        except Exception as e:
-            raise ValueError(f"Failed to parse output class in BaseAgent: {e}")
-
-    def _extract_key_value_pairs(self, json_string, num_keys=0):
-
-        # if not json_string.endswith("}"):
-        #     json_string += '"}'
-
-        json_string = json_string.replace('"', "")
-
-        json_entities = json_string.split(",")
-
-        matches = []
-
-        for i in json_entities:
-            if ":" in i.split(" ")[0]:
-                matches.append(i)
-            else:
                 try:
-                    matches[-1] = matches[-1] + i
-                except:
-                    pass
-
-        # pattern = re.compile(r'(\w+):([^,{}]+)(?=,|}|$)', re.DOTALL)
-        # matches = pattern.findall(json_string)
-
-        key_value_pairs = []
-
-        current_num_keys = 0
-        for match in matches:
-            key = match.split(":")[0].strip("{")
-            value = "".join(match.split(":")[1:]).strip("}")
-            current_num_keys += 1
-            key_value_pairs.append(f'"{key}": "{value}"')
-
-        if current_num_keys < num_keys:
-            return None, num_keys
-
-        dict_str = "{" + ", ".join(key_value_pairs) + "}"
-        return dict_str, current_num_keys
-
-    def _add_quotes(self, match):
-        return f'"{match.group(0)}"'
+                    json_str = match.group(1).strip()
+                    json_data = json.loads(json_str)
+                    return model_class(**json_data)
+                        
+                except json.JSONDecodeError as e:
+                    print(f"JSON decode error for {class_name}: {e}")
+                    continue
+                except ValidationError as e:
+                    print(f"Validation error for {class_name}: {e}")
+                    continue
+                except Exception as e:
+                    print(f"Unexpected error parsing {class_name}: {e}")
+                    continue
+        
+        return None
 
     @staticmethod
     def _get_default_prompt_part():
