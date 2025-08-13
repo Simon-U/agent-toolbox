@@ -7,11 +7,14 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_anthropic import ChatAnthropic
 from langchain_anthropic.chat_models import convert_to_anthropic_tool
+from langchain_core.tools import tool as create_tool
 from langchain_core.output_parsers import PydanticToolsParser
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from typing import Any
+from langchain_core.tools import BaseTool
+
 
 from langchain_ollama import ChatOllama
 from ..connectors.ollama.proxy_ollama import ProxyOllama
@@ -151,6 +154,14 @@ class BaseAgent:
         return prompt | llm
 
     @staticmethod
+    def _transform_tools(tools):
+        t_tools = []
+        for tool_ in tools:
+            if not isinstance(tool_, BaseTool):
+                tool_ = create_tool(tool_)
+            t_tools.append(tool_)
+        return t_tools
+    @staticmethod
     def tool_model(
         prompt: str,
         model: str,
@@ -181,15 +192,7 @@ class BaseAgent:
         llm = BaseAgent._get_model(model, temperature, api_key, streaming, provider=provider, max_tokens=max_tokens)
 
         unique_tools = []
-        if not model.startswith("gpt"):
-            seen = set()
-            for tool in tools:
-                tool_name = tool.name if hasattr(tool, "name") else str(tool)
-                if tool_name not in seen:
-                    unique_tools.append(convert_to_anthropic_tool(tool))
-                    seen.add(tool_name)
-        else:
-            unique_tools = tools
+        unique_tools = BaseAgent._transform_tools(tools)
         llm = prompt | llm.bind_tools(unique_tools, tool_choice=tool_choice)
         if add_parser:
             llm = llm | PydanticToolsParser(tools=unique_tools)

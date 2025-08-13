@@ -83,7 +83,7 @@ class ToolAgent(AgentUtils):
         if route == END:
             return END
         tool_calls = state["messages"][-1].tool_calls
-
+        print(tool_calls)
         safe_toolnames = [t.name for t in tools]
         if all(tc["name"] in safe_toolnames for tc in tool_calls):
             return "assistant_tools"
