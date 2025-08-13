@@ -114,7 +114,6 @@ class ToolAgent(AgentUtils):
             self.router,
             tools=self.assistant_class._get_tools(),
         )
-        workflow.add_edge("Entry", "Assistant")
         workflow.add_conditional_edges("Assistant", router)
         workflow.add_edge("assistant_tools", "Assistant")
 
