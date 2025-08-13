@@ -8,6 +8,7 @@ from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableLambda
 
 from langgraph.graph.message import AnyMessage, add_messages
+from langchain_anthropic.chat_models import convert_to_anthropic_tool
 
 __all__ = ["ToolAgent"]
 
@@ -83,11 +84,10 @@ class ToolAgent(AgentUtils):
         if route == END:
             return END
         tool_calls = state["messages"][-1].tool_calls
-        print(tool_calls)
         safe_toolnames = [t.name for t in tools]
         if all(tc["name"] in safe_toolnames for tc in tool_calls):
             return "assistant_tools"
-        raise ValueError
+        return END
 
     def create_agent(self):
 
@@ -112,7 +112,7 @@ class ToolAgent(AgentUtils):
 
         router = functools.partial(
             self.router,
-            tools=self.assistant_class._get_tools(),
+            tools=self.assistant_class._routing_tools(),
         )
         workflow.add_conditional_edges("Assistant", router)
         workflow.add_edge("assistant_tools", "Assistant")
