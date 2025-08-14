@@ -9,7 +9,7 @@ from langchain_core.runnables import RunnableLambda
 
 from langgraph.graph.message import AnyMessage, add_messages
 from langchain_anthropic.chat_models import convert_to_anthropic_tool
-
+from .base import BaseAgent
 __all__ = ["ToolAgent"]
 
 
@@ -51,7 +51,7 @@ class ToolAgent(AgentUtils):
     return; An executable graph
     """
 
-    def __init__(self, assistant_class, provider, model, api_key, streaming=False, state_class = GraphState):
+    def __init__(self, assistant_class, provider, model, api_key, streaming=False, state_class = GraphState, format_answer=None):
         """_summary_
 
         Args:
@@ -63,6 +63,7 @@ class ToolAgent(AgentUtils):
         self.api_key = api_key
         self.provider = provider
         self.graph_state = state_class
+        self.format_answer = format_answer
 
     @staticmethod
     def _check(message):
@@ -79,7 +80,7 @@ class ToolAgent(AgentUtils):
         return output_dict
 
     @staticmethod
-    def router(state, tools=None):
+    def router(state, tools=None, format_answer=None):
         route = tools_condition(state)
         if route == END:
             return END
@@ -87,6 +88,10 @@ class ToolAgent(AgentUtils):
         safe_toolnames = [t.name for t in tools]
         if all(tc["name"] in safe_toolnames for tc in tool_calls):
             return "assistant_tools"
+        
+        if not format_answer is None:
+            res = BaseAgent.parse_llm_response_generic(state['messages'][-1], [format_answer])
+            print(res)
         return END
 
     def create_agent(self):
@@ -113,6 +118,7 @@ class ToolAgent(AgentUtils):
         router = functools.partial(
             self.router,
             tools=self.assistant_class._routing_tools(),
+            format_answer=self.format_answer
         )
         workflow.add_conditional_edges("Assistant", router)
         workflow.add_edge("assistant_tools", "Assistant")
