@@ -89,9 +89,6 @@ class ToolAgent(AgentUtils):
         if all(tc["name"] in safe_toolnames for tc in tool_calls):
             return "assistant_tools"
         
-        if not format_answer is None:
-            res = BaseAgent.parse_llm_response_generic(state['messages'][-1], [format_answer])
-            print(res)
         return END
 
     def create_agent(self):
