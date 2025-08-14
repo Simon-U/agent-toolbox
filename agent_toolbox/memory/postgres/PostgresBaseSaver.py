@@ -275,7 +275,7 @@ class BasePostgresSaver(BaseCheckpointSaver[str]):
             wheres.append("thread_id = %s ")
             param_values.append(config["configurable"]["thread_id"])
             checkpoint_ns = config["configurable"].get("checkpoint_ns")
-            user_id = int(config["configurable"].get("user_id"))
+            user_id = config["configurable"].get("user_id")
             if checkpoint_ns is not None:
                 wheres.append("checkpoint_ns = %s")
                 param_values.append(checkpoint_ns)

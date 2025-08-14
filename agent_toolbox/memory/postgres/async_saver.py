@@ -225,7 +225,13 @@ class AsyncPostgresSaver(BasePostgresSaver):
                 if not isinstance(metadata_dict, dict):
                     metadata_dict = self.jsonplus_serde.loads(metadata_dict)
                 # Extract the message from the "writes" key in metadata
-                user_message = metadata_dict["writes"]["__start__"]["messages"][1]
+                try:
+                    user_message = metadata_dict["writes"]["__start__"]["messages"]['kwargs']['content']
+                except Exception as e:
+                    try:
+                        user_message = metadata_dict["writes"]["__start__"]["messages"][0]['kwargs']['content']
+                    except Exception as e:
+                        pass
                 # Add both user_message and created_at to the map
 
                 thread_message_map[thread_id] = {
