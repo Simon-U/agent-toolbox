@@ -198,6 +198,7 @@ class PostgresSaver(BasePostgresSaver):
             SELECT thread_id, metadata, created_at
             FROM {self.checkpoint_table}
             WHERE parent_checkpoint_id IS NULL
+            AND (metadata->>'parents' = '{{}}' OR metadata->'parents' = '{{}}')
         """
         # Add user_id filtering to the query if user_id is provided
         if user_id:
@@ -219,11 +220,9 @@ class PostgresSaver(BasePostgresSaver):
                 try:
                     user_message = metadata_dict["writes"]["__start__"]["messages"]['kwargs']['content']
                 except Exception as e:
-                    try:
-                        user_message = metadata_dict["writes"]["__start__"]["messages"][0]['kwargs']['content']
-                    except Exception as e:
-                        pass
-                        #print(metadata_dict["writes"]["__start__"]["messages"])
+                    print(e)
+                    continue
+
                 # Add both user_message and created_at to the map
 
                 thread_message_map[thread_id] = {
@@ -519,3 +518,41 @@ class PostgresSaver(BasePostgresSaver):
             else:
                 with self.lock, conn.cursor(binary=True, row_factory=dict_row) as cur:
                     yield cur
+
+    def delete_thread(self, config: RunnableConfig) -> int:
+        """Delete all checkpoints and associated data for a given thread.
+
+        This method removes all checkpoint records, blobs, and writes from the Postgres 
+        database for the specified thread_id and checkpoint_ns.
+
+        Args:
+            config (RunnableConfig): The config containing the thread_id to delete.
+                                Should have the structure:
+                                {"configurable": {"thread_id": "...", "checkpoint_ns": "..."}}
+
+        Returns:
+            int: Number of checkpoints deleted.
+
+        Examples:
+            >>> config = {"configurable": {"thread_id": "1"}}
+            >>> deleted_count = memory.delete_thread(config)
+            >>> print(f"Deleted {deleted_count} checkpoints")
+            
+            >>> config = {"configurable": {"thread_id": "1", "checkpoint_ns": "custom_ns"}}
+            >>> deleted_count = memory.delete_thread(config)
+        """
+        thread_id = config["configurable"]["thread_id"]
+        checkpoint_ns = config["configurable"].get("checkpoint_ns", "")
+        
+        # Format the DELETE SQL with the actual table names
+        DELETE_WRITES_SQL = f"DELETE FROM {self.writes_table} WHERE thread_id = %s AND checkpoint_ns = %s"
+        DELETE_BLOBS_SQL = f"DELETE FROM {self.blobs_table} WHERE thread_id = %s AND checkpoint_ns = %s"
+        DELETE_CHECKPOINTS_SQL = f"DELETE FROM {self.checkpoint_table} WHERE thread_id = %s AND checkpoint_ns = %s"
+        
+        with self._cursor() as cur:
+            # Delete in order: writes -> blobs -> checkpoints (to respect foreign key constraints if any)
+            cur.execute(DELETE_WRITES_SQL, (thread_id, checkpoint_ns))
+            cur.execute(DELETE_BLOBS_SQL, (thread_id, checkpoint_ns))
+            cur.execute(DELETE_CHECKPOINTS_SQL, (thread_id, checkpoint_ns))
+            
+            return cur.rowcount
