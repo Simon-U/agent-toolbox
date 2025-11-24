@@ -14,9 +14,10 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
+from langchain_mistralai import ChatMistralAI
 
 from ..connectors.ollama.proxy_ollama import ProxyOllama
-from .provider_config import Provider, ProviderConfig, OllamaConfig, GoogleConfig
+from .provider_config import Provider, ProviderConfig, OllamaConfig, GoogleConfig, MistralConfig
 
 
 class ProviderHandler(ABC):
@@ -187,6 +188,45 @@ class GoogleHandler(ProviderHandler):
         )
 
 
+class MistralHandler(ProviderHandler):
+    """
+    Handler for Mistral AI models.
+
+    Supports Mistral models through the Mistral AI API.
+    """
+
+    def get_model(self, model: str, config: MistralConfig) -> ChatMistralAI:
+        """
+        Get a configured ChatMistralAI instance.
+
+        Args:
+            model: Model name (e.g., 'mistral-7b', 'mistral-large').
+            config: Mistral configuration with API key and optional endpoint.
+
+        Returns:
+            Configured ChatMistralAI instance.
+        """
+        api_key = config.api_key or os.environ.get("MISTRAL_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "Mistral API key not provided and MISTRAL_API_KEY environment variable not set"
+            )
+
+        kwargs = {
+            "model": model,
+            "temperature": config.temperature,
+            "streaming": config.streaming,
+            "api_key": api_key,
+            "max_tokens": config.max_tokens,
+        }
+
+        # Add optional endpoint if provided
+        if config.endpoint:
+            kwargs["endpoint"] = config.endpoint
+
+        return ChatMistralAI(**kwargs)
+
+
 class ProviderFactory:
     """
     Factory for creating provider handlers.
@@ -205,6 +245,7 @@ class ProviderFactory:
         Provider.OPENAI: OpenAIHandler(),
         Provider.OLLAMA: OllamaHandler(),
         Provider.GOOGLE: GoogleHandler(),
+        Provider.MISTRAL: MistralHandler(),
     }
 
     @classmethod

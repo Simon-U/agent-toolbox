@@ -20,11 +20,13 @@ class Provider(str, Enum):
     - ANTHROPIC: Anthropic API models (claude-3, claude-opus, etc.)
     - OLLAMA: Local LLM models via Ollama
     - GOOGLE: Google Generative AI models
+    - MISTRAL: Mistral AI models (mistral-7b, mistral-large, etc.)
     """
     OPENAI = 'openai'
     ANTHROPIC = 'anthropic'
     OLLAMA = 'ollama'
     GOOGLE = 'google'
+    MISTRAL = 'mistral'
 
 
 @dataclass
@@ -74,10 +76,22 @@ class GoogleConfig(ProviderConfig):
     project: Optional[str] = None
 
 
+@dataclass
+class MistralConfig(ProviderConfig):
+    """
+    Mistral AI specific configuration.
+
+    Attributes:
+        endpoint: Optional custom endpoint for Mistral API. Defaults to standard Mistral endpoint.
+    """
+    endpoint: Optional[str] = None
+
+
 # Default configurations for each provider
 DEFAULT_CONFIGS = {
     Provider.OPENAI: ProviderConfig(),
     Provider.ANTHROPIC: ProviderConfig(),
     Provider.OLLAMA: OllamaConfig(),
     Provider.GOOGLE: GoogleConfig(),
+    Provider.MISTRAL: MistralConfig(),
 }

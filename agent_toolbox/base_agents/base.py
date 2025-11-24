@@ -21,7 +21,7 @@ from pydantic import BaseModel, ValidationError
 from dotenv import load_dotenv
 from langchain_core.tools import BaseTool
 
-from .provider_config import Provider, ProviderConfig, OllamaConfig, GoogleConfig
+from .provider_config import Provider, ProviderConfig, OllamaConfig, GoogleConfig, MistralConfig
 from .provider_handlers import ProviderFactory
 from ..connectors.database.database_connector import DatabaseConnector
 
@@ -45,6 +45,7 @@ class BaseAgent:
     - openai: GPT models via OpenAI API
     - ollama: Local LLM models via Ollama
     - google: Gemini models via Google Generative AI
+    - mistral: Mistral AI models via Mistral AI API
     """
 
     def current_agent(self) -> str:
@@ -90,12 +91,12 @@ class BaseAgent:
             temperature: Model temperature controlling randomness (0-2). Defaults to 0.
             api_key: API key for the provider. If None, will try environment variables.
             streaming: Whether to stream the response. Defaults to False.
-            provider: The provider name ('openai', 'anthropic', 'ollama', 'google').
+            provider: The provider name ('openai', 'anthropic', 'ollama', 'google', 'mistral').
                      Defaults to 'anthropic'.
             max_tokens: Maximum tokens in response. Defaults to 8000.
 
         Returns:
-            Configured LLM instance (ChatOpenAI, ChatAnthropic, ChatOllama, etc.).
+            Configured LLM instance (ChatOpenAI, ChatAnthropic, ChatOllama, ChatMistralAI, etc.).
 
         Raises:
             ValueError: If the provider is not supported.
@@ -121,6 +122,13 @@ class BaseAgent:
             )
         elif provider_enum == Provider.GOOGLE:
             config = GoogleConfig(
+                api_key=api_key,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                streaming=streaming
+            )
+        elif provider_enum == Provider.MISTRAL:
+            config = MistralConfig(
                 api_key=api_key,
                 temperature=temperature,
                 max_tokens=max_tokens,
