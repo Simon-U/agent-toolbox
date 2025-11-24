@@ -5,3 +5,4 @@ agents/base/database/sqlite.db
 .pytest_cache
 agent_toolbox.egg-info
 build
+.claude/
