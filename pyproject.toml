@@ -1,6 +1,6 @@
 [project]
 name = "agent-toolbox"
-version = "0.8.1"
+version = "1.0.0"
 description = ""
 authors = [
     {name = "Simon Unterbusch",email = "simonunterbusch@unterbusch.com"}
