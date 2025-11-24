@@ -1,14 +1,26 @@
-import sqlite3
+"""
+Memory/checkpoint storage factory for LangGraph applications.
+
+This module provides the Memory() factory function for creating checkpoint savers
+that persist agent state and conversation history across sessions.
+
+Supported backends:
+- memory: In-memory storage (for testing/development)
+- sqlite: Local SQLite database (for single-machine persistence)
+- asyncsqlite: Async SQLite database (for non-blocking single-machine persistence)
+- postgres: PostgreSQL database (for distributed production systems)
+"""
+
 from os import environ
 
-from psycopg import Connection, AsyncConnection
-from psycopg_pool import AsyncConnectionPool
-from langgraph.checkpoint.memory import MemorySaver
-from ..connectors.database.database_connector import DatabaseConnector
-from .sqlite.sqlite_saver import CustomSqliteSaver
-from .sqlite.async_sqlite_saver import CustomAsyncSqliteSaver
-from .postgres.sync_saver import PostgresSaver
-from .postgres.async_saver import AsyncPostgresSaver
+from .memory_config import (
+    MemoryType,
+    PostgresType,
+    MemoryConfig,
+    SqliteConfig,
+    PostgresConfig,
+)
+from .memory_handlers import MemoryFactory
 
 __all__ = ["Memory"]
 
@@ -97,63 +109,51 @@ def Memory(
             >>> res = await graph.ainvoke({"messages": [("human", "what's the weather in sf")]}, config)
             >>> checkpoint = await checkpointer.aget(config)
     """
-    if type_of == "memory":
-        return MemorySaver()
-
-    elif type_of == "sqlite":
-        if not sqlite_path:
-            raise ValueError("Please specify a sqlite_path for the database.")
-        conn = sqlite3.connect(sqlite_path, check_same_thread=False)
-        return CustomSqliteSaver(
-            conn,
-            checkpoint_table=checkpoint_table,
-            intermediate_table=intermediate_table,
-        )
-    elif type_of == "asyncsqlite":
-        if not sqlite_path:
-            raise ValueError("Please specify a sqlite_path for the database.")
-        conn = sqlite3.connect(sqlite_path, check_same_thread=False)
-        return CustomAsyncSqliteSaver(
-            conn,
-            checkpoint_table=checkpoint_table,
-            intermediate_table=intermediate_table,
-        )
-
-    elif type_of == "postgres":
-        if postgres_type not in [
-            "sync_single",
-            "sync_pool",
-            "async_single",
-            "async_pool",
-        ]:
-            raise ValueError(
-                "postgres_type must be one of 'sync_single', 'sync_pool', 'async_single', or 'async_pool'."
-            )
-
-        if not postgres_connection:
-            postgres_connection = DatabaseConnector().uri
-
-        if postgres_type == "sync_single":
-            saver = PostgresSaver(
-                postgres_connection,
-                checkpoint_table=checkpoint_table,
-                intermediate_table=intermediate_table,
-                migration_table=migration_table,
-                blob_table=blob_table,
-            )
-            return saver
-
-        elif postgres_type == "async_single":
-            saver = AsyncPostgresSaver(
-                postgres_connection,
-                checkpoint_table=checkpoint_table,
-                intermediate_table=intermediate_table,
-                migration_table=migration_table,
-                blob_table=blob_table,
-            )
-            return saver
-
-    else:
+    # Convert string type to MemoryType enum
+    try:
+        memory_type = MemoryType(type_of)
+    except ValueError:
+        supported = ", ".join([t.value for t in MemoryType])
         raise ValueError(
-            f"Unsupported memory type '{type}'. Supported types: 'memory', 'sqlite', 'postgres'."
+            f"Unsupported memory type '{type_of}'. "
+            f"Supported types: {supported}"
         )
+
+    # Handle in-memory (no config needed)
+    if memory_type == MemoryType.MEMORY:
+        handler = MemoryFactory.get_handler(memory_type)
+        return handler.get_saver(MemoryConfig())
+
+    # Handle SQLite and AsyncSQLite
+    if memory_type in [MemoryType.SQLITE, MemoryType.ASYNCSQLITE]:
+        config = SqliteConfig(
+            sqlite_path=sqlite_path,
+            checkpoint_table=checkpoint_table,
+            intermediate_table=intermediate_table,
+        )
+        handler = MemoryFactory.get_handler(memory_type)
+        return handler.get_saver(config)
+
+    # Handle PostgreSQL
+    if memory_type == MemoryType.POSTGRES:
+        # Convert postgres_type string to enum
+        try:
+            pg_type = PostgresType(postgres_type)
+        except ValueError:
+            supported = ", ".join([t.value for t in PostgresType])
+            raise ValueError(
+                f"postgres_type must be one of {supported}. "
+                f"Got: {postgres_type}"
+            )
+
+        config = PostgresConfig(
+            postgres_type=pg_type,
+            postgres_connection=postgres_connection,
+            max_pool=max_pool,
+            checkpoint_table=checkpoint_table,
+            intermediate_table=intermediate_table,
+            migration_table=migration_table,
+            blob_table=blob_table,
+        )
+        handler = MemoryFactory.get_handler(memory_type)
+        return handler.get_saver(config)

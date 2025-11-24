@@ -7,10 +7,9 @@ def parse_requirements(filename):
     with open(filename, "r") as file:
         return file.read().splitlines()
 
-
 setup(
     name="agent_toolbox",
-    version="0.1.0",
+    version="1.0.0",
     packages=find_packages(),
     install_requires=parse_requirements("requirements.txt"),
     author="Simon Unterbusch",
@@ -24,7 +23,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.9",
+    python_requires=">=3.11",
     include_package_data=True,
     package_data={},
 )
